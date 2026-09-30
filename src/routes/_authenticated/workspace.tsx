@@ -6,8 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/workspace")({
   head: () => ({ meta: [
-    { title: "工作區 — Video Speed Reader" }, { name: "description", content: "上傳影片,在 Video Speed Reader 管理你的精準逐字稿。" },
-    { property: "og:title", content: "工作區 — Video Speed Reader" }, { property: "og:description", content: "上傳影片,在 Video Speed Reader 管理你的精準逐字稿。" },
+    { title: "工作區 — Video Speed Reader" }, { name: "description", content: "上傳影片，在 Video Speed Reader 管理你的精準逐字稿。" },
+    { property: "og:title", content: "工作區 — Video Speed Reader" }, { property: "og:description", content: "上傳影片，在 Video Speed Reader 管理你的精準逐字稿。" },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
   ]}), component: Workspace,
 });
