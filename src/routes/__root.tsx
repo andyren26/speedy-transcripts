@@ -78,9 +78,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Veloce — Video to transcript in three minutes" },
-      { name: "description", content: "Turn long-form video into accurate, reusable transcripts in three minutes." },
-      { name: "author", content: "Veloce" },
+      { title: "Video Speed Reader — 上傳影片,三分鐘內拿到逐字稿" },
+      { name: "description", content: "Upload your video, get a clean transcript in three minutes. 上傳影片,三分鐘內拿到逐字稿。" },
+      { name: "author", content: "Video Speed Reader" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
