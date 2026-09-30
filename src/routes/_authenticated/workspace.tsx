@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/workspace")({
   ]}), component: Workspace,
 });
 
-const projects=[
+const projects: Array<[string, string, "Ready" | "Processing" | "Draft"]> = [
   ["Q4 Product Launch — Keynote","42:18 · English · 12,904 words","Ready"],
   ["Intro to Distributed Systems","1:12:04 · English · 18,220 words","Processing"],
   ["API Deep Dive — Webhooks","28:51 · English · 8,410 words","Ready"],
