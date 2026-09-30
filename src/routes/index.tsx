@@ -1,24 +1,41 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
+import { ArrowRight, Check, FileText, Play, Sparkles, Upload, Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({ meta: [
+    { title: "Veloce — Accurate video transcripts in three minutes" },
+    { name: "description", content: "Turn long videos into clean, timestamped transcripts for content, courses, and searchable archives." },
+    { property: "og:title", content: "Veloce — Accurate video transcripts in three minutes" },
+    { property: "og:description", content: "Turn long videos into clean, timestamped transcripts for content, courses, and searchable archives." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
+  ]}),
+  component: HomePage,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
+const lines = [
+  ["00:00", "Welcome back — today we're breaking down the new rendering pipeline."],
+  ["00:14", "The first thing to notice is how much faster the compile step is."],
+  ["00:31", "We rebuilt the scheduler around a work-stealing model."],
+  ["00:48", "That alone cut our build times by roughly forty percent."],
+];
+
+function Brand() {
+  return <Link to="/" className="flex items-center gap-2.5"><span className="brand-gradient grid size-9 place-items-center rounded-lg font-display text-sm font-bold text-primary-foreground">V</span><span className="font-display text-lg font-semibold">Veloce</span></Link>;
+}
+
+function HomePage() {
+  return <main className="relative min-h-screen overflow-hidden bg-background">
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden"><div className="float-soft absolute -left-48 -top-56 size-[540px] rounded-full bg-primary/20 blur-[120px]"/><div className="absolute -right-52 top-[30rem] size-[600px] rounded-full bg-secondary/15 blur-[130px]"/><div className="absolute bottom-0 left-1/3 size-[480px] rounded-full bg-accent/10 blur-[120px]"/></div>
+    <header className="relative z-10 mx-auto max-w-7xl px-4 pt-4 sm:px-6 sm:pt-6"><div className="glass-panel flex items-center justify-between rounded-xl px-4 py-3 sm:px-5"><Brand/><nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex"><a href="#product" className="hover:text-foreground">Product</a><a href="#workflow" className="hover:text-foreground">Workflow</a><a href="#pricing" className="hover:text-foreground">Pricing</a></nav><div className="flex items-center gap-2"><Button asChild variant="ghost" className="hidden sm:inline-flex"><Link to="/auth">Sign in</Link></Button><Button asChild variant="hero"><Link to="/auth">Start free</Link></Button></div></div></header>
+    <section id="product" className="relative z-10 mx-auto grid max-w-7xl items-center gap-14 px-6 pb-20 pt-20 lg:grid-cols-2 lg:pt-28">
+      <div><div className="glass-panel mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs text-muted-foreground"><span className="pulse-soft size-1.5 rounded-full bg-secondary"/>Three-minute transcripts, ready to ship</div><h1 className="font-display text-5xl font-bold leading-[1.04] sm:text-6xl">Long videos, <span className="brand-text">accurate transcripts</span> in three minutes.</h1><p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">Veloce turns hours of footage into clean, timestamped transcripts built for creators, educators, and engineers.</p><div className="mt-8 flex flex-wrap gap-3"><Button asChild size="lg" variant="hero"><Link to="/auth">Upload a video <ArrowRight/></Link></Button><Button asChild size="lg" variant="glass"><a href="#workflow"><Play/> See how it works</a></Button></div><div className="mt-10 flex flex-wrap gap-x-8 gap-y-4 text-sm text-muted-foreground"><span><strong className="block font-display text-2xl text-foreground">3 min</strong> average turnaround</span><span><strong className="block font-display text-2xl text-foreground">98.4%</strong> word accuracy</span><span><strong className="block font-display text-2xl text-foreground">40+</strong> languages</span></div></div>
+      <div className="relative"><div className="glass-panel rounded-2xl p-4"><div className="flex items-center justify-between border-b border-border pb-3"><div className="flex gap-2"><i className="size-2.5 rounded-full bg-destructive/70"/><i className="size-2.5 rounded-full bg-warning/70"/><i className="size-2.5 rounded-full bg-success/70"/></div><span className="text-xs text-muted-foreground">launch-interview.mp4</span></div><div className="mt-5 space-y-4">{lines.map(([time,text])=><div key={time} className="flex gap-3 text-sm"><span className="shrink-0 font-mono text-xs text-secondary">{time}</span><p className="leading-6 text-foreground/80">{text}</p></div>)}</div><div className="mt-5 flex items-center gap-2 rounded-lg border border-border bg-surface-bright px-3 py-2"><Check className="size-4 text-success"/><span className="text-xs text-muted-foreground">Transcript complete · 00:02:51 processed</span></div></div><div className="glass-panel absolute -bottom-8 -left-6 hidden rounded-xl px-4 py-3 sm:block"><p className="text-xs text-muted-foreground">Exported to</p><p className="font-display text-sm font-semibold">Markdown · SRT · DOCX</p></div></div>
+    </section>
+    <section id="workflow" className="relative z-10 border-y border-border bg-card/30 py-20"><div className="mx-auto max-w-7xl px-6"><div className="max-w-2xl"><p className="text-xs font-semibold uppercase text-secondary">A shorter path to useful words</p><h2 className="mt-3 font-display text-4xl font-semibold">From raw footage to reusable text.</h2></div><div className="mt-10 grid gap-4 md:grid-cols-3">{[[Upload,"Drop in any video","Upload a file or paste a link. No trimming or prep required."],[Zap,"We map every word","Speakers, punctuation, and timestamps are handled automatically."],[FileText,"Edit and ship","Search, refine, and export for articles, notes, captions, or archives."]].map(([Icon,title,copy],i)=>{const I=Icon as typeof Upload;return <article key={title as string} className="glass-panel rounded-xl p-6"><span className="font-mono text-xs text-secondary">0{i+1}</span><I className="mt-8 size-5 text-secondary"/><h3 className="mt-4 font-display text-xl font-semibold">{title as string}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{copy as string}</p></article>})}</div></div></section>
+    <section className="relative z-10 mx-auto max-w-7xl px-6 py-24"><div className="grid gap-10 lg:grid-cols-[.7fr_1.3fr]"><div><p className="text-xs font-semibold uppercase text-secondary">Made for long-form thinkers</p><h2 className="mt-3 font-display text-4xl font-semibold">One clean source of truth.</h2></div><div className="divide-y divide-border border-y border-border">{[["Creators","Turn interviews and videos into articles, newsletters, and clip scripts."],["Educators","Create searchable lecture notes and accessible captions without manual cleanup."],["Engineers","Archive demos, design reviews, and technical decisions with exact timestamps."]].map(([name,copy])=><div key={name} className="grid gap-3 py-7 sm:grid-cols-[9rem_1fr]"><strong className="font-display">{name}</strong><p className="text-muted-foreground">{copy}</p></div>)}</div></div></section>
+    <section id="pricing" className="relative z-10 mx-auto max-w-5xl px-6 pb-24"><div className="glass-panel grid items-center gap-8 rounded-2xl p-7 sm:p-10 md:grid-cols-[1fr_auto]"><div><Sparkles className="size-5 text-secondary"/><h2 className="mt-4 font-display text-3xl font-semibold">Start with your next recording.</h2><p className="mt-3 text-muted-foreground">Your first 60 minutes are free. No card required.</p></div><Button asChild size="lg" variant="hero"><Link to="/auth">Create free account <ArrowRight/></Link></Button></div></section>
+    <footer className="relative z-10 border-t border-border"><div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row"><Brand/><p className="text-sm text-muted-foreground">© 2026 Veloce Labs · Privacy · Terms</p></div></footer>
+  </main>;
 }
