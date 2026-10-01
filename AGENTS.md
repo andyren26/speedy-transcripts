@@ -9,4 +9,4 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Use the public `/` route for marketing, `/auth` for email or Google access, and protected `/workspace` for the product shell; this keeps crawlable content separate from private work.
+- This is a plain Vite + React SPA using React Router (`src/App.tsx`). Routes: public `/` for marketing, `/sign-in` and `/sign-up` for email or Google access, and protected `/app` (guarded by `RequireAuth`) for the product shell. There is no SSR or server code; `vercel.json` rewrites every path to `index.html` so deep links resolve client-side.
