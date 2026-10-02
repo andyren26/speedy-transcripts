@@ -9,7 +9,6 @@ import {
   useRouteError,
 } from "react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { reportLovableError } from "@/lib/lovable-error-reporting";
 import { RequireAuth } from "@/components/RequireAuth";
 import HomePage from "@/pages/Home";
 import AuthPage from "@/pages/Auth";
@@ -62,9 +61,8 @@ function ErrorComponent() {
 }
 
 function AppErrorPage({ error }: { error: unknown }) {
-  console.error(error);
   useEffect(() => {
-    reportLovableError(error, { boundary: "react_router_root_error_element" });
+    console.error(error);
   }, [error]);
 
   return (
