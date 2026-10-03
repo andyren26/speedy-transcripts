@@ -19,8 +19,8 @@
  */
 
 @theme inline {
-  --font-sans: "Inter", "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Nunito", "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fredoka", "Noto Sans TC", ui-rounded, ui-sans-serif, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -65,46 +65,56 @@
   --color-surface-bright: var(--surface-bright);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-blush: var(--blush);
+  --color-sun: var(--sun);
+  --color-daisy: var(--daisy);
 }
 
+/*
+ * Theme: "morning meadow" — a sunlit field of daisies. Pale grass-green ground,
+ * deep moss ink, leaf-green actions, blush-pink accents, warm sunlight, daisy white.
+ */
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.13 0.035 273);
-  --foreground: oklch(0.94 0.014 264);
-  --card: oklch(0.19 0.041 271 / 72%);
-  --card-foreground: oklch(0.96 0.01 264);
-  --popover: oklch(0.17 0.04 271);
-  --popover-foreground: oklch(0.96 0.01 264);
-  --primary: oklch(0.62 0.21 278);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.82 0.13 206);
-  --secondary-foreground: oklch(0.13 0.035 273);
-  --muted: oklch(0.25 0.035 270);
-  --muted-foreground: oklch(0.7 0.03 265);
-  --accent: oklch(0.72 0.15 304);
-  --accent-foreground: oklch(0.99 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.9 0.02 270 / 14%);
-  --input: oklch(0.9 0.02 270 / 18%);
-  --ring: oklch(0.82 0.13 206);
-  --brand-glow: oklch(0.82 0.13 206);
-  --surface-bright: oklch(0.98 0.01 264 / 8%);
-  --success: oklch(0.76 0.15 160);
-  --warning: oklch(0.82 0.16 82);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --radius: 1rem;
+  --background: oklch(0.962 0.028 118);
+  --foreground: oklch(0.31 0.055 148);
+  --card: oklch(0.995 0.01 100 / 74%);
+  --card-foreground: oklch(0.31 0.055 148);
+  --popover: oklch(0.99 0.012 100);
+  --popover-foreground: oklch(0.31 0.055 148);
+  --primary: oklch(0.52 0.125 142);
+  --primary-foreground: oklch(0.995 0.008 100);
+  --secondary: oklch(0.55 0.13 12);
+  --secondary-foreground: oklch(0.995 0.008 100);
+  --muted: oklch(0.915 0.04 125);
+  --muted-foreground: oklch(0.46 0.05 142);
+  --accent: oklch(0.93 0.04 12);
+  --accent-foreground: oklch(0.31 0.055 148);
+  --destructive: oklch(0.55 0.19 27);
+  --destructive-foreground: oklch(0.99 0.005 100);
+  --border: oklch(0.45 0.07 140 / 16%);
+  --input: oklch(0.45 0.07 140 / 24%);
+  --ring: oklch(0.6 0.13 138);
+  --brand-glow: oklch(0.62 0.15 128);
+  --surface-bright: oklch(1 0 0 / 62%);
+  --success: oklch(0.5 0.12 150);
+  --warning: oklch(0.58 0.13 65);
+  --blush: oklch(0.82 0.085 12);
+  --sun: oklch(0.9 0.13 95);
+  --daisy: oklch(0.995 0.008 100);
+  --chart-1: oklch(0.52 0.125 142);
+  --chart-2: oklch(0.7 0.1 12);
+  --chart-3: oklch(0.82 0.15 92);
+  --chart-4: oklch(0.65 0.1 128);
+  --chart-5: oklch(0.45 0.07 160);
+  --sidebar: oklch(0.975 0.022 118);
+  --sidebar-foreground: oklch(0.31 0.055 148);
+  --sidebar-primary: oklch(0.52 0.125 142);
+  --sidebar-primary-foreground: oklch(0.995 0.008 100);
+  --sidebar-accent: oklch(0.93 0.04 12);
+  --sidebar-accent-foreground: oklch(0.31 0.055 148);
+  --sidebar-border: oklch(0.45 0.07 140 / 16%);
+  --sidebar-ring: oklch(0.6 0.13 138);
 }
 
 .dark {
@@ -158,21 +168,64 @@
   button, a { -webkit-tap-highlight-color: transparent; }
 }
 
+/* Daisy-white panel resting in the grass: warm translucent white, soft green shadow. */
 @utility glass-panel {
-  background: linear-gradient(135deg, color-mix(in oklab, var(--foreground) 9%, transparent), color-mix(in oklab, var(--foreground) 3%, transparent));
-  border: 1px solid var(--border);
-  box-shadow: 0 24px 70px oklch(0.03 0.02 273 / 35%);
-  backdrop-filter: blur(22px);
+  background: linear-gradient(160deg, color-mix(in oklab, var(--daisy) 86%, transparent), color-mix(in oklab, var(--daisy) 66%, transparent));
+  border: 1px solid color-mix(in oklab, var(--daisy) 70%, var(--border));
+  box-shadow: 0 1px 0 oklch(1 0 0 / 70%) inset, 0 18px 50px oklch(0.45 0.09 140 / 13%);
+  backdrop-filter: blur(18px) saturate(1.15);
 }
 
+/* Leaf green, catching a little sunlight at the edge. */
 @utility brand-gradient {
-  background-image: linear-gradient(115deg, var(--primary), var(--brand-glow));
+  background-image: linear-gradient(135deg, var(--primary) 0%, var(--primary) 45%, var(--brand-glow) 100%);
 }
 
 @utility brand-text {
-  background-image: linear-gradient(100deg, var(--brand-glow), var(--accent), var(--primary));
+  background-image: linear-gradient(100deg, oklch(0.4 0.1 148) 0%, var(--primary) 45%, oklch(0.6 0.14 125) 100%);
   background-clip: text;
   color: transparent;
+}
+
+/* Warm morning sun glowing from the top-right corner, as in a backlit meadow. */
+@utility meadow-sun {
+  background: radial-gradient(circle, oklch(0.99 0.06 98 / 95%) 0%, oklch(0.95 0.1 95 / 55%) 35%, transparent 70%);
+  filter: blur(8px);
+}
+
+@utility meadow-rays {
+  background: repeating-linear-gradient(118deg, transparent 0 70px, oklch(1 0.04 98 / 22%) 70px 110px, transparent 110px 190px);
+  mask-image: radial-gradient(ellipse 80% 70% at 100% 0%, black 0%, transparent 70%);
+}
+
+/* Foreground grass melts away at the bottom, like a shallow depth of field. */
+@utility meadow-ground {
+  mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+}
+
+/* Out-of-focus daisies floating in front of the lens. */
+@utility bokeh {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 40% 35%, oklch(1 0.01 100 / 90%), oklch(0.97 0.05 98 / 40%) 60%, transparent 72%);
+  filter: blur(2px);
+}
+
+@layer base {
+  /* Keep browser autofill inside the meadow palette instead of default blue. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--foreground);
+    -webkit-box-shadow: 0 0 0 1000px oklch(0.97 0.035 112) inset;
+    caret-color: var(--foreground);
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  ::selection {
+    background: var(--blush);
+    color: var(--foreground);
+  }
 }
 
 @keyframes float-soft { 50% { transform: translateY(-12px); } }

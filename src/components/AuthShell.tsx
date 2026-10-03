@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
+import { MeadowGround, MeadowSky } from "@/components/Meadow";
 
 /** Shared card layout for the sign-in, forgot-password and reset-password pages. */
 export function AuthShell({
@@ -18,14 +19,8 @@ export function AuthShell({
 }) {
   return (
     <main className="relative grid min-h-screen place-items-center overflow-hidden bg-background px-4 py-12">
-      <div
-        aria-hidden
-        className="absolute -left-48 -top-48 size-[560px] rounded-full bg-primary/25 blur-[130px]"
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-48 -right-48 size-[560px] rounded-full bg-secondary/15 blur-[130px]"
-      />
+      <MeadowSky />
+      <MeadowGround className="h-32 sm:h-44" />
       <div className="relative w-full max-w-md">
         <Link
           to={backTo}
