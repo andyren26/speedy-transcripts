@@ -29,6 +29,20 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  // Auth links (Google sign-in, email confirmation, password reset) come back as
+  // ?code=... (PKCE). Exchange the code for a session cookie here on the server, so
+  // server-checked pages like /app see the user on the very first request. Then
+  // redirect to the same URL without the code.
+  const code = request.nextUrl.searchParams.get("code");
+  if (code) {
+    await supabase.auth.exchangeCodeForSession(code);
+    const clean = request.nextUrl.clone();
+    clean.searchParams.delete("code");
+    const redirect = NextResponse.redirect(clean);
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  }
+
   // Do not put code between createServerClient and getUser(): getUser() is what
   // refreshes an expired session and writes the new cookie.
   await supabase.auth.getUser();
