@@ -23,3 +23,7 @@ dist
 *.sw?
 .next
 next-env.d.ts
+
+# Python worker (runs on EC2)
+worker/venv/
+__pycache__/
