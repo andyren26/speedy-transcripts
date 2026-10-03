@@ -6,6 +6,7 @@ import {
   Outlet,
   createBrowserRouter,
   isRouteErrorResponse,
+  useNavigate,
   useRouteError,
 } from "react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,17 +14,26 @@ import { RequireAuth } from "@/components/RequireAuth";
 import HomePage from "@/pages/Home";
 import AuthPage from "@/pages/Auth";
 import Workspace from "@/pages/Workspace";
+import ForgotPasswordPage from "@/pages/ForgotPassword";
+import ResetPasswordPage from "@/pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
 function RootLayout() {
+  const navigate = useNavigate();
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      // A password-reset link that lands anywhere other than /reset-password
+      // (e.g. Supabase fell back to the Site URL) still ends up on the reset form.
+      if (event === "PASSWORD_RECOVERY" && window.location.pathname !== "/reset-password") {
+        navigate("/reset-password", { replace: true });
+        return;
+      }
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       if (session) queryClient.invalidateQueries();
     });
     return () => data.subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -101,6 +111,8 @@ export const router = createBrowserRouter([
       { path: "/", element: <HomePage /> },
       { path: "/sign-in", element: <AuthPage mode="signin" /> },
       { path: "/sign-up", element: <AuthPage mode="signup" /> },
+      { path: "/forgot-password", element: <ForgotPasswordPage /> },
+      { path: "/reset-password", element: <ResetPasswordPage /> },
       {
         element: <RequireAuth />,
         children: [{ path: "/app", element: <Workspace /> }],
