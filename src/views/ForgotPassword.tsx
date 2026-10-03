@@ -1,5 +1,7 @@
+"use client";
+
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import Link from "next/link";
 import { Loader2, MailCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -93,7 +95,7 @@ export default function ForgotPasswordPage() {
       </form>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         想起密碼了？
-        <Link to="/sign-in" className="font-semibold text-secondary hover:text-foreground">
+        <Link href="/sign-in" className="font-semibold text-secondary hover:text-foreground">
           登入
         </Link>
       </p>

@@ -1,5 +1,8 @@
+"use client";
+
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -26,7 +29,7 @@ export default function ResetPasswordPage() {
     title: "設定新密碼 — Video Speed Reader",
     description: "為你的 Video Speed Reader 帳號設定新密碼。",
   });
-  const navigate = useNavigate();
+  const router = useRouter();
   const [linkError] = useState(linkErrorFromUrl);
   const [state, setState] = useState<LinkState>(linkError ? "invalid" : "checking");
   const [password, setPassword] = useState("");
@@ -70,7 +73,7 @@ export default function ResetPasswordPage() {
       );
       return;
     }
-    navigate("/app", { replace: true });
+    router.replace("/app");
   }
 
   if (state === "checking") {
@@ -92,7 +95,7 @@ export default function ResetPasswordPage() {
         backLabel="回到登入"
       >
         <Button asChild variant="hero" className="mt-7 h-11 w-full">
-          <Link to="/forgot-password">重新寄送重設連結</Link>
+          <Link href="/forgot-password">重新寄送重設連結</Link>
         </Button>
       </AuthShell>
     );

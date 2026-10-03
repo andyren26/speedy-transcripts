@@ -1,5 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
-import { Link } from "react-router";
+import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { MeadowGround, MeadowSky } from "@/components/Meadow";
 
@@ -23,7 +25,7 @@ export function AuthShell({
       <MeadowGround className="h-32 sm:h-44" />
       <div className="relative w-full max-w-md">
         <Link
-          to={backTo}
+          href={backTo}
           className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" />

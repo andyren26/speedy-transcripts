@@ -9,4 +9,4 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- This is a plain Vite + React SPA using React Router (`src/App.tsx`). Routes: public `/` for marketing, `/sign-in` and `/sign-up` for email or Google access, and protected `/app` (guarded by `RequireAuth`) for the product shell. There is no SSR or server code; `vercel.json` rewrites every path to `index.html` so deep links resolve client-side.
+- This is a Next.js 16 App Router app. Routes live in `app/` (thin wrappers); the page UIs are client components in `src/views/`. Public: `/`, `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password`. Protected: `/app` (auth checked on the server in `app/app/page.tsx`). Supabase auth uses `@supabase/ssr` with cookie sessions: browser client `src/lib/supabase/client.ts`, server client `src/lib/supabase/server.ts` (`await cookies()`), and `middleware.ts` refreshes the session. Styles: `app/globals.css` (Tailwind 4 via `@tailwindcss/postcss`).

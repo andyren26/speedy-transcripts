@@ -235,3 +235,6 @@
   .float-soft { animation: float-soft 9s ease-in-out infinite; }
   .pulse-soft { animation: pulse-soft 2.2s ease-in-out infinite; }
 }
+
+/* Next.js App Router files live in app/ (outside src/), so scan them too. */
+@source "../app";
