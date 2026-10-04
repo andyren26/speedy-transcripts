@@ -5,6 +5,7 @@ import { Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/AppHeader";
 import UploadForm from "@/views/UploadForm";
+import SummaryCell from "@/views/SummaryCell";
 
 export const metadata = {
   title: "上傳影片 — Video Speed Reader",
@@ -16,6 +17,7 @@ type JobRow = {
   created_at: string;
   video_source_url: string;
   status: string;
+  current_session_id: string | null;
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -41,11 +43,24 @@ export default async function UploadPage() {
   // the explicit user_id filter keeps the intent obvious.
   const { data, error } = await supabase
     .from("jobs")
-    .select("id, created_at, video_source_url, status")
+    .select("id, created_at, video_source_url, status, current_session_id")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(20);
   const jobs: JobRow[] = data ?? [];
+
+  // Cached AI summaries for those jobs (RLS: "users read own sessions").
+  const sessionIds = jobs.map((j) => j.current_session_id).filter((id): id is string => !!id);
+  const summaries = new Map<string, string>();
+  if (sessionIds.length > 0) {
+    const { data: sessions } = await supabase
+      .from("job_sessions")
+      .select("id, summary_content")
+      .in("id", sessionIds);
+    for (const s of sessions ?? []) {
+      if (s.summary_content) summaries.set(s.id, s.summary_content);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-background">
@@ -75,6 +90,7 @@ export default async function UploadPage() {
                     <th className="px-3 py-3 sm:px-4 font-semibold">URL</th>
                     <th className="px-3 py-3 sm:px-4 font-semibold">Status</th>
                     <th className="px-3 py-3 sm:px-4 font-semibold">Transcript</th>
+                    <th className="px-3 py-3 sm:px-4 font-semibold">Summary</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -108,6 +124,20 @@ export default async function UploadPage() {
                             <Download className="size-4" />
                             .txt
                           </a>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 sm:px-4">
+                        {job.status === "done" ? (
+                          <SummaryCell
+                            jobId={job.id}
+                            initialSummary={
+                              job.current_session_id
+                                ? (summaries.get(job.current_session_id) ?? null)
+                                : null
+                            }
+                          />
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
