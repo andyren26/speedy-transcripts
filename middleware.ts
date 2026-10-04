@@ -52,7 +52,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except static assets and image files.
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Everything except static assets, image files, and the Stripe webhook
+    // (machine-to-machine: no session to refresh, and the raw body must reach
+    // the handler untouched for signature verification).
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|api/stripe/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
