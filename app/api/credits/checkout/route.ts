@@ -43,6 +43,10 @@ export async function POST(req: Request) {
   try {
     const session = await getStripe().checkout.sessions.create({
       mode: "payment",
+      // This Stripe account has Managed Payments on by default, which rejects
+      // payment_method_types and requires a tax code on every product. M2 uses
+      // plain Checkout, so turn it off per session.
+      managed_payments: { enabled: false },
       payment_method_types: ["card"],
       line_items: [{ price: product.stripe_price_id, quantity: 1 }],
       success_url: `${origin}/credits/success?session_id={CHECKOUT_SESSION_ID}`,
