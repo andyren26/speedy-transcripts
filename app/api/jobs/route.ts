@@ -25,6 +25,20 @@ export async function POST(req: Request) {
   const language = LANGUAGES.has(body.language) ? body.language : "zh";
   const topic = typeof body.topic === "string" && body.topic.trim() ? body.topic.trim() : null;
 
+  // M2 fast pre-check: block the obvious "no credits at all" case at the form.
+  // The precise per-video check (duration vs balance) happens on the worker.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("credits_balance")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!profile || Number(profile.credits_balance) < 1) {
+    return NextResponse.json(
+      { error: "點數不足，請先購買點數。", code: "insufficient_credits" },
+      { status: 402 },
+    );
+  }
+
   // 2. Use the Supabase Secret key to insert the job + session rows.
   // The user has already been authenticated above; the Secret key bypasses RLS
   // so we can insert in one round-trip without policy ping-pong.

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Workspace from "@/views/Workspace";
 import { createClient } from "@/lib/supabase/server";
+import { AppHeader } from "@/components/AppHeader";
 
 // Post-login dashboard. Auth is checked on the server from the session cookie.
 export default async function AppPage() {
@@ -10,5 +11,5 @@ export default async function AppPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  return <Workspace user={user} />;
+  return <Workspace header={<AppHeader user={user} />} />;
 }

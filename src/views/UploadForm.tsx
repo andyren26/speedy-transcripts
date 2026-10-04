@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,11 +21,13 @@ export default function UploadForm() {
   const [language, setLanguage] = useState("zh");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [needCredits, setNeedCredits] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
+    setNeedCredits(false);
     try {
       const res = await fetch("/api/jobs", {
         method: "POST",
@@ -37,6 +40,7 @@ export default function UploadForm() {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        setNeedCredits(res.status === 402);
         setError(body.error ?? `送出失敗（HTTP ${res.status}）`);
         return;
       }
@@ -100,6 +104,14 @@ export default function UploadForm() {
       {error && (
         <p role="alert" className="rounded-lg bg-surface-bright px-3 py-2 text-sm text-destructive">
           {error}
+          {needCredits && (
+            <>
+              {" "}
+              <Link href="/credits" className="font-medium text-primary underline">
+                前往購買點數
+              </Link>
+            </>
+          )}
         </p>
       )}
 

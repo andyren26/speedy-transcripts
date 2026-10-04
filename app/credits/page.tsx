@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { SignOutButton } from "@/components/SignOutButton";
+import { AppHeader } from "@/components/AppHeader";
 import Credits from "@/views/Credits";
 
 export const metadata = {
@@ -40,26 +39,7 @@ export default async function CreditsPage({
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="flex h-16 items-center justify-between border-b border-border px-4 sm:px-6">
-        <Link href="/app" className="flex items-center gap-2.5">
-          <span className="brand-gradient grid size-9 place-items-center rounded-lg font-display text-sm font-bold text-primary-foreground">
-            V
-          </span>
-          <span className="font-display font-semibold">Video Speed Reader</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/upload"
-            className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-surface-bright hover:text-foreground"
-          >
-            上傳影片
-          </Link>
-          <span className="hidden max-w-56 truncate text-sm text-muted-foreground sm:block">
-            {user.email}
-          </span>
-          <SignOutButton />
-        </div>
-      </header>
+      <AppHeader user={user} />
 
       <section className="mx-auto max-w-5xl p-5 sm:p-8 lg:p-10">
         <p className="text-sm text-secondary">Credits</p>

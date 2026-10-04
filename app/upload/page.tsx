@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { SignOutButton } from "@/components/SignOutButton";
+import { AppHeader } from "@/components/AppHeader";
 import UploadForm from "@/views/UploadForm";
 
 export const metadata = {
@@ -24,6 +23,7 @@ const STATUS_STYLE: Record<string, string> = {
   downloading: "bg-muted text-muted-foreground",
   transcribe: "bg-sky-500/15 text-sky-700",
   done: "bg-success/15 text-success",
+  insufficient_credits: "bg-destructive/15 text-destructive",
 };
 
 function truncate(url: string, max = 50) {
@@ -49,26 +49,7 @@ export default async function UploadPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <header className="flex h-16 items-center justify-between border-b border-border px-4 sm:px-6">
-        <Link href="/app" className="flex items-center gap-2.5">
-          <span className="brand-gradient grid size-9 place-items-center rounded-lg font-display text-sm font-bold text-primary-foreground">
-            V
-          </span>
-          <span className="font-display font-semibold">Video Speed Reader</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/app"
-            className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-surface-bright hover:text-foreground"
-          >
-            工作區
-          </Link>
-          <span className="hidden max-w-56 truncate text-sm text-muted-foreground sm:block">
-            {user.email}
-          </span>
-          <SignOutButton />
-        </div>
-      </header>
+      <AppHeader user={user} />
 
       <section className="mx-auto max-w-5xl p-5 sm:p-8 lg:p-10">
         <p className="text-sm text-secondary">Transcribe a video</p>
