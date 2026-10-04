@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/AppHeader";
 import UploadForm from "@/views/UploadForm";
 import SummaryCell from "@/views/SummaryCell";
+import JobsAutoRefresh from "@/views/JobsAutoRefresh";
+import { JobStatus, isJobInProgress } from "@/components/JobStatus";
 
 export const metadata = {
   title: "上傳影片 — Video Speed Reader",
@@ -17,15 +19,8 @@ type JobRow = {
   created_at: string;
   video_source_url: string;
   status: string;
+  progress: number;
   current_session_id: string | null;
-};
-
-const STATUS_STYLE: Record<string, string> = {
-  pending: "bg-muted text-muted-foreground",
-  downloading: "bg-muted text-muted-foreground",
-  transcribe: "bg-sky-500/15 text-sky-700",
-  done: "bg-success/15 text-success",
-  insufficient_credits: "bg-destructive/15 text-destructive",
 };
 
 function truncate(url: string, max = 50) {
@@ -43,7 +38,7 @@ export default async function UploadPage() {
   // the explicit user_id filter keeps the intent obvious.
   const { data, error } = await supabase
     .from("jobs")
-    .select("id, created_at, video_source_url, status, current_session_id")
+    .select("id, created_at, video_source_url, status, progress, current_session_id")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -65,6 +60,7 @@ export default async function UploadPage() {
   return (
     <main className="min-h-screen bg-background">
       <AppHeader user={user} />
+      <JobsAutoRefresh active={jobs.some((j) => isJobInProgress(j.status))} />
 
       <section className="mx-auto max-w-5xl p-5 sm:p-8 lg:p-10">
         <p className="text-sm text-secondary">Transcribe a video</p>
@@ -106,13 +102,7 @@ export default async function UploadPage() {
                         <span className="block truncate">{truncate(job.video_source_url)}</span>
                       </td>
                       <td className="px-3 py-3 sm:px-4">
-                        <span
-                          className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
-                            STATUS_STYLE[job.status] ?? "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {job.status}
-                        </span>
+                        <JobStatus status={job.status} progress={job.progress} />
                       </td>
                       <td className="px-3 py-3 sm:px-4">
                         {job.status === "done" ? (

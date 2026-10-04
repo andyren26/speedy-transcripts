@@ -8,9 +8,12 @@ Manager — the EC2's IAM instance profile grants `secretsmanager:GetSecretValue
 on exactly those secret names, so no credentials ever live on disk.
 """
 import math
+import re
+import threading
 import os
 import subprocess
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -66,13 +69,75 @@ def update_session(session_id: str, **fields) -> None:
     db.table("job_sessions").update(fields).eq("id", session_id).execute()
 
 
-def download_video(url: str, dest_dir: Path) -> Path:
-    """yt-dlp for URLs (its generic extractor handles direct .mp3/.mp4 links)."""
+class Progress:
+    """Writes jobs.progress (0–100) for the upload page. Only moves forward, and
+    throttles DB writes to every few percent so a long job isn't hundreds of updates."""
+
+    def __init__(self, job_id: str) -> None:
+        self.job_id = job_id
+        self.value = 0
+        self._written = -1
+        self._lock = threading.Lock()
+
+    def set(self, pct: float, force: bool = False) -> None:
+        pct = int(max(0, min(100, pct)))
+        with self._lock:
+            if pct < self.value:
+                return
+            self.value = pct
+            if not force and pct - self._written < 3:
+                return
+            self._written = pct
+        try:
+            db.table("jobs").update({"progress": pct}).eq("id", self.job_id).execute()
+        except Exception as e:  # progress is cosmetic; never fail the job over it
+            print(f"[{self.job_id}] progress write failed: {e}", flush=True)
+
+    @contextmanager
+    def creep(self, upper: float, every: float = 3.0):
+        """While a step of unknown length runs (a Whisper call), ease the bar toward
+        `upper` without ever reaching it, so the user sees it is still working."""
+        stop = threading.Event()
+
+        def tick() -> None:
+            while not stop.wait(every):
+                gap = upper - 1 - self.value
+                if gap >= 1:
+                    self.set(self.value + max(1.0, gap * 0.12))
+
+        t = threading.Thread(target=tick, daemon=True)
+        t.start()
+        try:
+            yield
+        finally:
+            stop.set()
+            t.join(timeout=1)
+
+
+_DL_PCT = re.compile(r"\[download\]\s+([\d.]+)%")
+
+
+def download_video(url: str, dest_dir: Path, on_percent=None) -> Path:
+    """yt-dlp for URLs (its generic extractor handles direct .mp3/.mp4 links).
+    `on_percent(0–100)` is called as yt-dlp reports download progress."""
     existing = sorted(dest_dir.glob("video.*"))
     if existing:
         return existing[0]  # re-run of the same job: reuse the earlier download
     out_template = str(dest_dir / "video.%(ext)s")
-    subprocess.run(["yt-dlp", "--no-playlist", "-o", out_template, url], check=True)
+    proc = subprocess.Popen(
+        ["yt-dlp", "--no-playlist", "--newline", "-o", out_template, url],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
+    )
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        m = _DL_PCT.search(line)
+        if m:
+            if on_percent:
+                on_percent(float(m.group(1)))
+            continue  # keep per-percent lines out of the service log
+        print(line.rstrip(), flush=True)
+    if proc.wait() != 0:
+        raise subprocess.CalledProcessError(proc.returncode, "yt-dlp")
     return next(dest_dir.glob("video.*"))
 
 
@@ -209,7 +274,12 @@ def main() -> None:
 
     # Claim the job FIRST, before any external call, so a crash below can't leave
     # it 'pending' and make the distributor respawn it in a loop.
-    update_job(job_id, status="downloading")
+    update_job(job_id, status="downloading", progress=2)
+    progress = Progress(job_id)
+    progress.set(2, force=True)
+
+    # Progress map: download 5–35%, audio conversion 35–40%, Whisper 40–95%,
+    # saving + charging 95–100%.
 
     # M2 gate 1 (cheap): duration from the manifest, no download.
     balance = get_balance(job["user_id"])
@@ -221,8 +291,13 @@ def main() -> None:
     print(f"[{job_id}] downloading {job['video_source_url']}", flush=True)
     work = WORK_ROOT / job_id
     work.mkdir(parents=True, exist_ok=True)
-    video = download_video(job["video_source_url"], work)
+    progress.set(5, force=True)
+    video = download_video(
+        job["video_source_url"], work, on_percent=lambda p: progress.set(5 + p * 0.30)
+    )
+    progress.set(35, force=True)
     mp3 = to_mp3(video, work)
+    progress.set(40, force=True)
 
     # M2 gate 2 (precise): exact length of the downloaded audio. This is also the
     # number we charge. 61 s = 2 credits (always round up, minimum 1).
@@ -236,12 +311,18 @@ def main() -> None:
     chunks = split_chunks(mp3, work)
     print(f"[{job_id}] transcribing {len(chunks)} chunk(s), {minutes} min", flush=True)
 
-    full_text = "\n\n".join(transcribe_chunk(c, job["language"]).strip() for c in chunks)
+    texts = []
+    per_chunk = 55 / len(chunks)
+    for i, chunk in enumerate(chunks):
+        with progress.creep(upper=40 + per_chunk * (i + 1)):
+            texts.append(transcribe_chunk(chunk, job["language"]).strip())
+        progress.set(40 + per_chunk * (i + 1), force=True)
+    full_text = "\n\n".join(texts)
 
     update_session(session_id, subtitle_txt_content=full_text)
     # M2: charge only on success — failed jobs never reach this line.
     deduct_credits(job, minutes)
-    update_job(job_id, status="done")
+    update_job(job_id, status="done", progress=100)
 
     print(f"[{job_id}] done — {len(full_text)} chars, charged {minutes} cr", flush=True)
 
