@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Coins } from "lucide-react";
+import { Coins, LifeBuoy } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/SignOutButton";
 
@@ -30,6 +30,14 @@ export async function AppHeader({ user }: { user: { id: string; email?: string |
           className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-surface-bright hover:text-foreground"
         >
           上傳影片
+        </Link>
+        <Link
+          href="/support"
+          title="聯絡客服"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-surface-bright hover:text-foreground sm:px-3"
+        >
+          <LifeBuoy className="size-4" />
+          <span className="hidden sm:inline">聯絡客服</span>
         </Link>
         <Link
           href="/credits"
