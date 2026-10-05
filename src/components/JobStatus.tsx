@@ -10,6 +10,7 @@ const FINAL_STYLE: Record<string, string> = {
 };
 
 const FINAL_LABEL: Record<string, string> = {
+  done: "完成",
   insufficient_credits: "點數不足",
 };
 
