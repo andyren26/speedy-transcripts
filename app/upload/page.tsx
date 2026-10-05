@@ -8,6 +8,7 @@ import UploadForm from "@/views/UploadForm";
 import SummaryCell from "@/views/SummaryCell";
 import JobsAutoRefresh from "@/views/JobsAutoRefresh";
 import { JobStatus, isJobInProgress } from "@/components/JobStatus";
+import { isUploadedFile, jobTitle } from "@/lib/job-title";
 
 export const metadata = {
   title: "上傳影片 — Video Speed Reader",
@@ -82,7 +83,9 @@ export default async function UploadPage() {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-border text-xs uppercase text-muted-foreground">
                   <tr>
-                    <th className="hidden px-3 py-3 font-semibold sm:table-cell sm:px-4">Created</th>
+                    <th className="hidden px-3 py-3 font-semibold sm:table-cell sm:px-4">
+                      Created
+                    </th>
                     <th className="px-3 py-3 sm:px-4 font-semibold">URL</th>
                     <th className="px-3 py-3 sm:px-4 font-semibold">Status</th>
                     <th className="px-3 py-3 sm:px-4 font-semibold">Transcript</th>
@@ -98,8 +101,19 @@ export default async function UploadPage() {
                           locale: zhTW,
                         })}
                       </td>
-                      <td className="max-w-[8rem] px-3 py-3 sm:max-w-xs sm:px-4" title={job.video_source_url}>
-                        <span className="block truncate">{truncate(job.video_source_url)}</span>
+                      <td
+                        className="max-w-[8rem] px-3 py-3 sm:max-w-xs sm:px-4"
+                        title={
+                          isUploadedFile(job.video_source_url)
+                            ? jobTitle(null, job.video_source_url)
+                            : job.video_source_url
+                        }
+                      >
+                        <span className="block truncate">
+                          {isUploadedFile(job.video_source_url)
+                            ? `📁 ${jobTitle(null, job.video_source_url)}`
+                            : truncate(job.video_source_url)}
+                        </span>
                       </td>
                       <td className="px-3 py-3 sm:px-4">
                         <JobStatus status={job.status} progress={job.progress} />

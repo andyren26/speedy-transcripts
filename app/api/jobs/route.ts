@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createDownloadUrl, uploadedSize, userUploadPrefix } from "@/lib/s3";
+import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
 
 const LANGUAGES = new Set(["zh", "en", "ja"]);
 
@@ -15,12 +17,33 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const url = typeof body.video_source_url === "string" ? body.video_source_url.trim() : "";
-  if (!url) {
-    return NextResponse.json({ error: "video_source_url required" }, { status: 400 });
-  }
-  if (!/^https?:\/\//i.test(url)) {
-    return NextResponse.json({ error: "video_source_url must start with http(s)://" }, { status: 400 });
+  const uploadKey = typeof body.upload_key === "string" ? body.upload_key.trim() : "";
+  let url = typeof body.video_source_url === "string" ? body.video_source_url.trim() : "";
+
+  if (uploadKey) {
+    // File upload: the object must be one of this user's uploads and within the size cap.
+    if (!uploadKey.startsWith(userUploadPrefix(user.id)) || uploadKey.includes("..")) {
+      return NextResponse.json({ error: "invalid upload_key" }, { status: 403 });
+    }
+    const size = await uploadedSize(uploadKey);
+    if (size === null) {
+      return NextResponse.json({ error: "找不到上傳的檔案，請重新上傳。" }, { status: 400 });
+    }
+    if (size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ error: "檔案超過上傳上限。" }, { status: 413 });
+    }
+    // The worker downloads it like any direct link (24-hour presigned GET).
+    url = await createDownloadUrl(uploadKey);
+  } else {
+    if (!url) {
+      return NextResponse.json({ error: "video_source_url required" }, { status: 400 });
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      return NextResponse.json(
+        { error: "video_source_url must start with http(s)://" },
+        { status: 400 },
+      );
+    }
   }
   const language = LANGUAGES.has(body.language) ? body.language : "zh";
   const topic = typeof body.topic === "string" && body.topic.trim() ? body.topic.trim() : null;

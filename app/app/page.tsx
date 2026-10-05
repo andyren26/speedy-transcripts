@@ -4,20 +4,9 @@ import { zhTW } from "date-fns/locale";
 import Workspace, { type RecentJob } from "@/views/Workspace";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/AppHeader";
+import { isUploadedFile, jobTitle } from "@/lib/job-title";
 
 const LANGUAGE_LABEL: Record<string, string> = { zh: "中文", en: "English", ja: "日本語" };
-
-/** Display name for a job: its topic if set, otherwise the file name from the video URL. */
-function jobTitle(topic: string | null, url: string) {
-  if (topic?.trim()) return topic.trim();
-  try {
-    const last = new URL(url).pathname.split("/").filter(Boolean).pop();
-    if (last) return decodeURIComponent(last);
-  } catch {
-    // not a parseable URL — fall through
-  }
-  return url;
-}
 
 // Post-login dashboard. Auth is checked on the server from the session cookie.
 export default async function AppPage() {
@@ -63,7 +52,9 @@ export default async function AppPage() {
     return {
       id: j.id,
       title: jobTitle(j.topic, j.video_source_url),
-      url: j.video_source_url,
+      url: isUploadedFile(j.video_source_url)
+        ? jobTitle(null, j.video_source_url)
+        : j.video_source_url,
       detail: [
         formatDistanceToNow(new Date(j.created_at), { addSuffix: true, locale: zhTW }),
         j.language ? (LANGUAGE_LABEL[j.language] ?? j.language) : null,
