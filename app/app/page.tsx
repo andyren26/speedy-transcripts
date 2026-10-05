@@ -11,5 +11,12 @@ export default async function AppPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  return <Workspace header={<AppHeader user={user} />} />;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("credits_balance")
+    .eq("id", user.id)
+    .maybeSingle();
+  const balance = Number(profile?.credits_balance ?? 0);
+
+  return <Workspace header={<AppHeader user={user} />} balance={balance} />;
 }
