@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { Coins, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { approxTwd, formatUsd } from "@/lib/pricing";
 
 export type CreditProduct = {
   id: string;
@@ -35,13 +36,9 @@ const TX_LABEL: Record<string, string> = {
   admin_grant: "手動加點",
 };
 
-function usd(n: number) {
-  return `$${Number(n).toFixed(2)}`;
-}
-
 /**
  * Extra credits a tier gives for the same money, compared with the baseline
- * (smallest) pack. $30 → 45 credits vs $1/credit baseline = +50%.
+ * (smallest) pack. $10 → 150 credits vs $5 → 60 (12 credits/$) = +25%.
  */
 function bonusPercent(tier: CreditProduct, baseline: CreditProduct) {
   const tierCreditsPerUsd = tier.credits / tier.price_usd;
@@ -109,12 +106,17 @@ export default function Credits({
           <p className="font-display text-3xl font-semibold">
             {Number(balance).toLocaleString()} <span className="text-lg">點</span>
           </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">1 點 = 1 分鐘影片（不足 1 分鐘以 1 分鐘計）</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            1 點 = 1 分鐘影片（不足 1 分鐘以 1 分鐘計）
+          </p>
         </div>
       </div>
 
       {/* Tiers */}
       <h2 className="mt-10 font-display text-xl font-semibold">購買點數</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        用多少買多少，不用訂閱，點數不會過期。以美元計價，新台幣為約略換算。
+      </p>
       {products.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">目前沒有可購買的方案。</p>
       ) : (
@@ -135,15 +137,13 @@ export default function Credits({
                     </span>
                   )}
                 </div>
-                <p className="mt-3 font-display text-3xl font-semibold">{usd(p.price_usd)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  每點 {usd(p.price_usd / p.credits)}
+                <p className="mt-3 font-display text-3xl font-semibold">{formatUsd(p.price_usd)}</p>
+                <p className="text-sm text-muted-foreground">{approxTwd(p.price_usd)}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  可轉錄 {p.credits.toLocaleString()} 分鐘・每分鐘{" "}
+                  {approxTwd(p.price_usd / p.credits)}
                 </p>
-                <Button
-                  className="mt-5"
-                  onClick={() => buy(p.id)}
-                  disabled={purchasingId !== null}
-                >
+                <Button className="mt-5" onClick={() => buy(p.id)} disabled={purchasingId !== null}>
                   {busy ? <Loader2 className="size-4 animate-spin" /> : null}
                   {busy ? "前往付款…" : "購買"}
                 </Button>
@@ -176,7 +176,10 @@ export default function Credits({
                   return (
                     <tr key={tx.id} className="border-b border-border last:border-0">
                       <td className="whitespace-nowrap px-3 py-3 text-muted-foreground sm:px-4">
-                        {formatDistanceToNow(new Date(tx.created_at), { addSuffix: true, locale: zhTW })}
+                        {formatDistanceToNow(new Date(tx.created_at), {
+                          addSuffix: true,
+                          locale: zhTW,
+                        })}
                       </td>
                       <td className="px-3 py-3 sm:px-4">
                         <span
