@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import { Providers } from "./providers";
 import "./globals.css";
 
-const title = "Video Speed Reader — 上傳影片，三分鐘內拿到逐字稿";
+const title = "Video Speed Reader — 上傳影片，幾分鐘內拿到逐字稿";
 const description =
-  "Upload your video, get a clean transcript in three minutes. 上傳影片，三分鐘內拿到逐字稿。";
+  "Upload your video, get a clean transcript in minutes. 上傳影片，幾分鐘內拿到逐字稿。";
 
 export const metadata: Metadata = {
   title,
