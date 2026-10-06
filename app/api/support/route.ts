@@ -8,14 +8,23 @@ import { MESSAGE_MAX, SUBJECT_MAX, SUPPORT_CATEGORIES, categoryLabel } from "@/l
  * Saves it to support_tickets, emails the owner (Reply-To = the member, so replying
  * from Gmail goes straight to them) and sends the member a receipt.
  *
- * Env: RESEND_API_KEY (required for email), SUPPORT_INBOX (where notifications go),
- * SUPPORT_FROM (sender on the verified Resend domain mail.valuetrack66.com).
+ * Env: RESEND_API_KEY (required for email), SUPPORT_INBOX (where notifications go —
+ * support@mail.valuetrack66.com, forwarded to Gmail by ImprovMX, so Gmail replies from
+ * that address), SUPPORT_FROM (receipt sender) and SUPPORT_NOTIFY_FROM (notification
+ * sender; a different address so Gmail doesn't treat it as mail you sent yourself).
  */
 
 const DEFAULT_FROM = "Video Speed Reader 客服 <support@mail.valuetrack66.com>";
+const DEFAULT_NOTIFY_FROM = "Video Speed Reader 網站通知 <notify@mail.valuetrack66.com>";
 const RATE_LIMIT = { max: 5, minutes: 10 };
 
-async function sendEmail(email: { to: string; subject: string; text: string; replyTo?: string }) {
+async function sendEmail(email: {
+  to: string;
+  subject: string;
+  text: string;
+  replyTo?: string;
+  from?: string;
+}) {
   const apiKey = process.env["RESEND_API_KEY"];
   if (!apiKey) {
     console.warn("[support] RESEND_API_KEY is not set — email skipped");
@@ -25,7 +34,7 @@ async function sendEmail(email: { to: string; subject: string; text: string; rep
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: process.env["SUPPORT_FROM"] || DEFAULT_FROM,
+      from: email.from || process.env["SUPPORT_FROM"] || DEFAULT_FROM,
       to: [email.to],
       subject: email.subject,
       text: email.text,
@@ -95,6 +104,7 @@ export async function POST(req: Request) {
     inbox
       ? sendEmail({
           to: inbox,
+          from: process.env["SUPPORT_NOTIFY_FROM"] || DEFAULT_NOTIFY_FROM,
           replyTo: user.email,
           subject: `[客服 #${ref}][${label}] ${subject}`,
           text: [
