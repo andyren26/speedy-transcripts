@@ -26,7 +26,7 @@ export default async function CreditsPage({
     supabase.from("profiles").select("credits_balance").eq("id", user.id).maybeSingle(),
     supabase
       .from("credit_products")
-      .select("id, name, credits, price_usd")
+      .select("id, name, credits, price_usd, price_twd")
       .eq("active", true)
       .order("price_usd"),
     supabase
@@ -51,6 +51,7 @@ export default async function CreditsPage({
             ...p,
             credits: Number(p.credits),
             price_usd: Number(p.price_usd),
+            price_twd: p.price_twd === null ? null : Number(p.price_twd),
           }))}
           transactions={transactions ?? []}
           canceled={canceled === "1"}

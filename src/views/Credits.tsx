@@ -5,13 +5,14 @@ import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { Coins, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { approxTwd, formatUsd } from "@/lib/pricing";
+import { formatTwd, formatUsd, packTwd } from "@/lib/pricing";
 
 export type CreditProduct = {
   id: string;
   name: string;
   credits: number;
   price_usd: number;
+  price_twd: number | null;
 };
 
 export type CreditTransaction = {
@@ -115,7 +116,7 @@ export default function Credits({
       {/* Tiers */}
       <h2 className="mt-10 font-display text-xl font-semibold">購買點數</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        用多少買多少，不用訂閱，點數不會過期。以美元計價，新台幣為約略換算。
+        用多少買多少，不用訂閱，點數不會過期。在台灣以新台幣付款，海外以美元付款，付款頁會依所在地自動顯示。
       </p>
       {products.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">目前沒有可購買的方案。</p>
@@ -137,11 +138,11 @@ export default function Credits({
                     </span>
                   )}
                 </div>
-                <p className="mt-3 font-display text-3xl font-semibold">{formatUsd(p.price_usd)}</p>
-                <p className="text-sm text-muted-foreground">{approxTwd(p.price_usd)}</p>
+                <p className="mt-3 font-display text-3xl font-semibold">{formatTwd(packTwd(p))}</p>
+                <p className="text-sm text-muted-foreground">海外付款 {formatUsd(p.price_usd)}</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   可轉錄 {p.credits.toLocaleString()} 分鐘・每分鐘{" "}
-                  {approxTwd(p.price_usd / p.credits)}
+                  {formatTwd(packTwd(p) / p.credits)}
                 </p>
                 <Button className="mt-5" onClick={() => buy(p.id)} disabled={purchasingId !== null}>
                   {busy ? <Loader2 className="size-4 animate-spin" /> : null}
