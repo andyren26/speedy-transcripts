@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Coins, LifeBuoy } from "lucide-react";
+import { Coins, Inbox, LifeBuoy } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { SignOutButton } from "@/components/SignOutButton";
 
@@ -11,10 +11,11 @@ export async function AppHeader({ user }: { user: { id: string; email?: string |
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("credits_balance")
+    .select("credits_balance, role")
     .eq("id", user.id)
     .maybeSingle();
   const balance = Number(profile?.credits_balance ?? 0);
+  const isAdmin = profile?.role === "admin";
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-border px-4 sm:px-6">
@@ -32,12 +33,12 @@ export async function AppHeader({ user }: { user: { id: string; email?: string |
           上傳影片
         </Link>
         <Link
-          href="/support"
-          title="聯絡客服"
+          href={isAdmin ? "/admin/support" : "/support"}
+          title={isAdmin ? "客服後台" : "聯絡客服"}
           className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-surface-bright hover:text-foreground sm:px-3"
         >
-          <LifeBuoy className="size-4" />
-          <span className="hidden sm:inline">聯絡客服</span>
+          {isAdmin ? <Inbox className="size-4" /> : <LifeBuoy className="size-4" />}
+          <span className="hidden sm:inline">{isAdmin ? "客服後台" : "聯絡客服"}</span>
         </Link>
         <Link
           href="/credits"
