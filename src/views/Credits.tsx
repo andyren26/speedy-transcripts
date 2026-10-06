@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { Coins, Loader2 } from "lucide-react";
@@ -117,6 +118,17 @@ export default function Credits({
       <h2 className="mt-10 font-display text-xl font-semibold">購買點數</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         用多少買多少，不用訂閱，點數不會過期。在台灣以新台幣付款，海外以美元付款，付款頁會依所在地自動顯示。
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        購買後 7 天內未使用的點數可申請退款。購買即表示你同意
+        <Link href="/terms" className="mx-0.5 text-primary hover:underline">
+          服務條款
+        </Link>
+        與
+        <Link href="/refund" className="mx-0.5 text-primary hover:underline">
+          退款政策
+        </Link>
+        。
       </p>
       {products.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">目前沒有可購買的方案。</p>
