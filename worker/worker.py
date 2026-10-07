@@ -29,8 +29,15 @@ def _get_secret(client, name: str) -> str:
     return client.get_secret_value(SecretId=name)["SecretString"]
 
 
+_SECRET_KEYS = ("OPENAI_API_KEY", "SUPABASE_URL", "SUPABASE_SECRET_KEY")
+
+
 def _load_secrets() -> dict[str, str]:
-    """Pull the three M1 secrets from AWS Secrets Manager (region from AWS_DEFAULT_REGION)."""
+    """Env-first: M4 (Fargate) injects the three secrets as env vars via the Lambda's
+    RunTask override; M1 (EC2) falls back to AWS Secrets Manager via the instance
+    profile. Same image/code runs in both."""
+    if all(os.environ.get(k) for k in _SECRET_KEYS):
+        return {k: os.environ[k] for k in _SECRET_KEYS}
     sm = boto3.client("secretsmanager")
     return {
         "OPENAI_API_KEY": _get_secret(sm, "openai-api-key"),
@@ -39,7 +46,7 @@ def _load_secrets() -> dict[str, str]:
     }
 
 
-# Clients are built only after the secrets are fetched (never from os.environ at import).
+# Clients are built only after the secrets are loaded (env on Fargate, Secrets Manager on EC2).
 _secrets = _load_secrets()
 db = create_client(_secrets["SUPABASE_URL"], _secrets["SUPABASE_SECRET_KEY"])
 openai_client = OpenAI(api_key=_secrets["OPENAI_API_KEY"])
