@@ -1,6 +1,6 @@
 """
 M1 worker: handles ONE job — downloads the video, runs Whisper, writes the TXT
-back to job_sessions.subtitle_txt_content.
+back to job_sessions.subtitle_txt_content (+ per-sentence timestamps in .segments).
 
 Started by distributor.py (one process per pending job). Reads JOB_ID from env.
 Reads OPENAI_API_KEY / SUPABASE_URL / SUPABASE_SECRET_KEY from AWS Secrets
@@ -255,15 +255,17 @@ def split_chunks(mp3_path: Path, dest_dir: Path) -> list[Path]:
     return chunks
 
 
-def transcribe_chunk(chunk_path: Path, language: str, max_retries: int = 4) -> str:
-    """Whisper with retry-with-backoff for 429 / 5xx only; 4xx errors are raised at once."""
+def transcribe_chunk(chunk_path: Path, language: str, max_retries: int = 4):
+    """Whisper with retry-with-backoff for 429 / 5xx only; 4xx errors are raised at once.
+    Returns the verbose_json result: `.text` plus `.segments` (per-sentence start/end
+    seconds, relative to this chunk). Same price as plain text — billed per audio minute."""
     for attempt in range(max_retries):
         try:
             with open(chunk_path, "rb") as f:
                 return openai_client.audio.transcriptions.create(
                     model="whisper-1",
                     file=f,
-                    response_format="text",
+                    response_format="verbose_json",
                     language=language,
                 )
         except openai.RateLimitError:
@@ -274,6 +276,20 @@ def transcribe_chunk(chunk_path: Path, language: str, max_retries: int = 4) -> s
             else:
                 raise  # 400/401/413/415 need a fix, not a retry
     raise RuntimeError(f"Whisper failed after {max_retries} retries: {chunk_path.name}")
+
+
+def offset_segments(raw_segments, offset_seconds: float) -> list[dict]:
+    """Whisper times each chunk from 0; shift them onto the full video's timeline
+    (chunk i starts at i * CHUNK_SECONDS). Drops empty segments."""
+    out = []
+    for seg in raw_segments or []:
+        text = (seg.text or "").strip()
+        if not text:
+            continue
+        start = round(float(seg.start) + offset_seconds, 2)
+        end = round(max(float(seg.end), float(seg.start)) + offset_seconds, 2)
+        out.append({"start": start, "end": end, "text": text})
+    return out
 
 
 # Shown to the user on the upload page when a job fails, keyed by the stage it
@@ -357,16 +373,18 @@ def run(job_id: str, stage: dict) -> None:
     stage["name"] = "transcribe"
     print(f"[{job_id}] transcribing {len(chunks)} chunk(s), {minutes} min", flush=True)
 
-    texts = []
+    texts, segments = [], []
     per_chunk = 55 / len(chunks)
     for i, chunk in enumerate(chunks):
         with progress.creep(upper=40 + per_chunk * (i + 1)):
-            texts.append(transcribe_chunk(chunk, job["language"]).strip())
+            result = transcribe_chunk(chunk, job["language"])
+        texts.append((result.text or "").strip())
+        segments.extend(offset_segments(result.segments, i * CHUNK_SECONDS))
         progress.set(40 + per_chunk * (i + 1), force=True)
     full_text = "\n\n".join(texts)
 
     stage["name"] = "save"
-    update_session(session_id, subtitle_txt_content=full_text)
+    update_session(session_id, subtitle_txt_content=full_text, segments=segments)
     # M2: charge only on success — failed jobs never reach this line.
     deduct_credits(job, minutes)
     update_job(job_id, status="done", progress=100)

@@ -93,6 +93,7 @@ export type Database = {
           created_at: string
           id: string
           job_id: string
+          segments: Json | null
           session_number: number
           subtitle_txt_content: string | null
           summary_content: string | null
@@ -102,6 +103,7 @@ export type Database = {
           created_at?: string
           id?: string
           job_id: string
+          segments?: Json | null
           session_number?: number
           subtitle_txt_content?: string | null
           summary_content?: string | null
@@ -111,6 +113,7 @@ export type Database = {
           created_at?: string
           id?: string
           job_id?: string
+          segments?: Json | null
           session_number?: number
           subtitle_txt_content?: string | null
           summary_content?: string | null

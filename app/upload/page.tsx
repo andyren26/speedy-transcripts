@@ -49,13 +49,17 @@ export default async function UploadPage() {
   // Cached AI summaries for those jobs (RLS: "users read own sessions").
   const sessionIds = jobs.map((j) => j.current_session_id).filter((id): id is string => !!id);
   const summaries = new Map<string, string>();
+  // Sessions with per-sentence timestamps (offer .srt). `segments->0` fetches only
+  // the first segment, so we learn "has timestamps" without loading them all.
+  const timestamped = new Set<string>();
   if (sessionIds.length > 0) {
     const { data: sessions } = await supabase
       .from("job_sessions")
-      .select("id, summary_content")
+      .select("id, summary_content, first_segment:segments->0")
       .in("id", sessionIds);
     for (const s of sessions ?? []) {
       if (s.summary_content) summaries.set(s.id, s.summary_content);
+      if (s.first_segment != null) timestamped.add(s.id);
     }
   }
 
@@ -126,14 +130,28 @@ export default async function UploadPage() {
                       </td>
                       <td className="px-3 py-3 sm:px-4">
                         {job.status === "done" ? (
-                          <a
-                            href={`/api/jobs/${job.id}/transcript`}
-                            download={`transcript-${job.id.slice(0, 8)}.txt`}
-                            className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
-                          >
-                            <Download className="size-4" />
-                            .txt
-                          </a>
+                          <div className="flex flex-col gap-1.5 sm:flex-row sm:gap-3">
+                            <a
+                              href={`/api/jobs/${job.id}/transcript`}
+                              download={`transcript-${job.id.slice(0, 8)}.txt`}
+                              className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
+                              title="逐字稿（每句附時間標記）"
+                            >
+                              <Download className="size-4" />
+                              .txt
+                            </a>
+                            {job.current_session_id && timestamped.has(job.current_session_id) && (
+                              <a
+                                href={`/api/jobs/${job.id}/transcript?format=srt`}
+                                download={`transcript-${job.id.slice(0, 8)}.srt`}
+                                className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
+                                title="字幕檔，可直接掛到影片上"
+                              >
+                                <Download className="size-4" />
+                                .srt
+                              </a>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
