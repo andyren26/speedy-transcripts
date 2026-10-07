@@ -1,0 +1,15 @@
+# M4 helper build: CodeBuild acts as the courier that packages the Lambda
+# distributor (deps layer + handler) and uploads both zips to S3.
+# Run with: start-build --buildspec-override lambda-build.buildspec.yml
+#           --environment-variables-override name=ARTIFACTS_BUCKET,value=<bucket>
+# Every command is quoted: `--only-binary=:all:` contains ": " which YAML would
+# otherwise parse as a key/value pair.
+version: 0.2
+phases:
+  build:
+    commands:
+      - "pip3 install --platform manylinux2014_x86_64 --implementation cp --python-version 3.12 --only-binary=:all: --target python supabase boto3"
+      - "zip -qr deps-layer.zip python"
+      - "aws s3 cp deps-layer.zip s3://${ARTIFACTS_BUCKET}/deps-layer.zip"
+      - "cd worker && zip ../handler.zip lambda_distributor.py && cd .."
+      - "aws s3 cp handler.zip s3://${ARTIFACTS_BUCKET}/handler.zip"
