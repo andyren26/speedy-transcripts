@@ -9,7 +9,8 @@ so the stateless Lambda can run every minute without double-spawning.
 
 Secrets are read from AWS Secrets Manager (same names as M1) and forwarded to
 the Fargate task as env vars — they never live in the Lambda's own config.
-Run with reserved concurrency = 1 so two ticks can never overlap.
+Overlapping ticks are safe: each session is claimed atomically in the DB
+(NULL -> 'claiming') before RunTask, so only one invocation can launch it.
 
 M4 scope: spawn pass only. Stuck-job recovery and storage cleanup are v2.
 """
@@ -22,6 +23,7 @@ ECS_CLUSTER = os.environ["ECS_CLUSTER"]
 TASK_DEFINITION = os.environ["TASK_DEFINITION"]
 SUBNETS = [s for s in os.environ["SUBNETS"].split(",") if s]
 CONTAINER_NAME = os.environ.get("CONTAINER_NAME", "worker")
+CLAIMING = "claiming"  # placeholder ARN while RunTask is in flight
 
 SECRET_NAMES = {
     "OPENAI_API_KEY": os.environ.get("OPENAI_SECRET_NAME", "openai-api-key"),
@@ -96,18 +98,25 @@ def handler(event, context):
     for job in pending:
         try:
             session_id = _ensure_session(db, job)
-            session = (
+            # Atomic claim: only one invocation can flip NULL -> CLAIMING, so even
+            # overlapping ticks can never launch two tasks for the same session.
+            claimed = (
                 db.table("job_sessions")
-                .select("fargate_task_arn")
+                .update({"fargate_task_arn": CLAIMING})
                 .eq("id", session_id)
-                .single()
+                .is_("fargate_task_arn", "null")
                 .execute()
                 .data
             )
-            if session.get("fargate_task_arn"):
-                skipped.append(job["id"])  # task already launched; it will claim the job
+            if not claimed:
+                skipped.append(job["id"])  # already launched (or being launched)
                 continue
-            arn = _run_task(job["id"], secrets)
+            try:
+                arn = _run_task(job["id"], secrets)
+            except Exception:
+                # release the claim so the next tick can retry
+                db.table("job_sessions").update({"fargate_task_arn": None}).eq("id", session_id).execute()
+                raise
             db.table("job_sessions").update({"fargate_task_arn": arn}).eq("id", session_id).execute()
             spawned.append({"job_id": job["id"], "task_arn": arn})
             print(f"spawned Fargate task for job {job['id']}: {arn}", flush=True)
