@@ -12,7 +12,9 @@ import re
 import threading
 import os
 import subprocess
+import sys
 import time
+import traceback
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -274,8 +276,42 @@ def transcribe_chunk(chunk_path: Path, language: str, max_retries: int = 4) -> s
     raise RuntimeError(f"Whisper failed after {max_retries} retries: {chunk_path.name}")
 
 
+# Shown to the user on the upload page when a job fails, keyed by the stage it
+# failed in. Failed jobs are never charged (deduct_credits runs only on success).
+FAIL_MESSAGES = {
+    "start": "處理時發生錯誤，請重新送出。這次不會扣點。",
+    "download": "無法下載影片。請確認連結可以公開存取，或改用上傳檔案。這次不會扣點。",
+    "audio": "無法讀取這個檔案的音訊。請確認格式正確、而且影片有聲音。這次不會扣點。",
+    "transcribe": "語音辨識服務暫時失敗，請稍後重新送出。這次不會扣點。",
+    "save": "轉錄完成但儲存失敗，請重新送出。這次不會扣點。",
+}
+UNFINISHED = ["pending", "downloading", "transcribe"]
+
+
+def mark_failed(job_id: str, message: str) -> None:
+    """Flip an unfinished job to 'failed' with a readable reason. Conditional on the
+    job still being unfinished, so it can never overwrite done/insufficient_credits."""
+    try:
+        db.table("jobs").update(
+            {"status": "failed", "error_message": message, "updated_at": now_iso()}
+        ).eq("id", job_id).in_("status", UNFINISHED).execute()
+    except Exception as e:  # DB unreachable: the distributor's sweep catches it later
+        print(f"[{job_id}] could not mark failed: {e}", flush=True)
+
+
 def main() -> None:
     job_id = os.environ["JOB_ID"]
+    stage = {"name": "start"}
+    try:
+        run(job_id, stage)
+    except Exception:
+        traceback.print_exc()
+        print(f"[{job_id}] FAILED during '{stage['name']}'", flush=True)
+        mark_failed(job_id, FAIL_MESSAGES.get(stage["name"], FAIL_MESSAGES["start"]))
+        sys.exit(1)
+
+
+def run(job_id: str, stage: dict) -> None:
     job = get_job(job_id)
     session_id = job["current_session_id"]
 
@@ -295,6 +331,7 @@ def main() -> None:
         block_insufficient(job, quick_minutes, balance)
         return
 
+    stage["name"] = "download"
     print(f"[{job_id}] downloading {job['video_source_url']}", flush=True)
     work = WORK_ROOT / job_id
     work.mkdir(parents=True, exist_ok=True)
@@ -303,6 +340,7 @@ def main() -> None:
         job["video_source_url"], work, on_percent=lambda p: progress.set(5 + p * 0.30)
     )
     progress.set(35, force=True)
+    stage["name"] = "audio"
     mp3 = to_mp3(video, work)
     progress.set(40, force=True)
 
@@ -316,6 +354,7 @@ def main() -> None:
 
     update_job(job_id, status="transcribe")
     chunks = split_chunks(mp3, work)
+    stage["name"] = "transcribe"
     print(f"[{job_id}] transcribing {len(chunks)} chunk(s), {minutes} min", flush=True)
 
     texts = []
@@ -326,6 +365,7 @@ def main() -> None:
         progress.set(40 + per_chunk * (i + 1), force=True)
     full_text = "\n\n".join(texts)
 
+    stage["name"] = "save"
     update_session(session_id, subtitle_txt_content=full_text)
     # M2: charge only on success — failed jobs never reach this line.
     deduct_credits(job, minutes)

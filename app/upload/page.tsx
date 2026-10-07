@@ -21,6 +21,7 @@ type JobRow = {
   video_source_url: string;
   status: string;
   progress: number;
+  error_message: string | null;
   current_session_id: string | null;
 };
 
@@ -39,7 +40,7 @@ export default async function UploadPage() {
   // the explicit user_id filter keeps the intent obvious.
   const { data, error } = await supabase
     .from("jobs")
-    .select("id, created_at, video_source_url, status, progress, current_session_id")
+    .select("id, created_at, video_source_url, status, progress, error_message, current_session_id")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -116,7 +117,12 @@ export default async function UploadPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3 sm:px-4">
-                        <JobStatus status={job.status} progress={job.progress} />
+                        <JobStatus
+                          status={job.status}
+                          progress={job.progress}
+                          error={job.error_message}
+                          showReason
+                        />
                       </td>
                       <td className="px-3 py-3 sm:px-4">
                         {job.status === "done" ? (

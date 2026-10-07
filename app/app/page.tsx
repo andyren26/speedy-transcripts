@@ -5,6 +5,7 @@ import Workspace, { type RecentJob } from "@/views/Workspace";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/AppHeader";
 import { isUploadedFile, jobTitle } from "@/lib/job-title";
+import { DEFAULT_FAIL_REASON } from "@/components/JobStatus";
 
 const LANGUAGE_LABEL: Record<string, string> = { zh: "中文", en: "English", ja: "日本語" };
 
@@ -21,7 +22,7 @@ export default async function AppPage() {
     // RLS limits jobs to the signed-in user's rows; the user_id filter keeps the intent obvious.
     supabase
       .from("jobs")
-      .select("id, created_at, video_source_url, topic, language, status, progress", {
+      .select("id, created_at, video_source_url, topic, language, status, progress, error_message", {
         count: "exact",
       })
       .eq("user_id", user.id)
@@ -59,11 +60,14 @@ export default async function AppPage() {
         formatDistanceToNow(new Date(j.created_at), { addSuffix: true, locale: zhTW }),
         j.language ? (LANGUAGE_LABEL[j.language] ?? j.language) : null,
         used ? `${used} 分鐘` : null,
+        // failed jobs: show why, right in the row's detail line
+        j.status === "failed" ? (j.error_message ?? DEFAULT_FAIL_REASON) : null,
       ]
         .filter(Boolean)
         .join(" · "),
       status: j.status,
       progress: j.progress ?? 0,
+      error: j.error_message,
     };
   });
 
