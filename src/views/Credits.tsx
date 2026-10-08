@@ -53,12 +53,16 @@ export default function Credits({
   products,
   transactions,
   canceled,
+  failedReason,
 }: {
   balance: number;
   products: CreditProduct[];
   transactions: CreditTransaction[];
   canceled: boolean;
+  /** set when 藍新 returned an unsuccessful payment */
+  failedReason: string | null;
 }) {
+  // "<productId>:twd" (藍新) or "<productId>:usd" (Stripe) while redirecting
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -67,8 +71,9 @@ export default function Credits({
     null,
   );
 
-  async function buy(productId: string) {
-    setPurchasingId(productId);
+  /** US$ — Stripe Checkout (overseas customers). */
+  async function buyUsd(productId: string) {
+    setPurchasingId(`${productId}:usd`);
     setError("");
     try {
       const res = await fetch("/api/credits/checkout", {
@@ -90,11 +95,51 @@ export default function Credits({
     }
   }
 
+  /** NT$ — 藍新金流 NewebPay MPG (Taiwan customers). The server returns an
+   *  encrypted form; the browser POSTs it to NewebPay's payment page. */
+  async function buyTwd(productId: string) {
+    setPurchasingId(`${productId}:twd`);
+    setError("");
+    try {
+      const res = await fetch("/api/credits/newebpay/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: productId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.action || !body.fields) {
+        setError(body.error ?? `無法建立付款頁面（HTTP ${res.status}）`);
+        setPurchasingId(null);
+        return;
+      }
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = body.action;
+      for (const [name, value] of Object.entries(body.fields as Record<string, string>)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit(); // buttons stay disabled while the browser leaves
+    } catch {
+      setError("網路錯誤，請再試一次。");
+      setPurchasingId(null);
+    }
+  }
+
   return (
     <>
       {canceled && (
         <p className="mt-6 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
           已取消付款，沒有任何扣款。
+        </p>
+      )}
+      {failedReason !== null && (
+        <p className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          付款沒有成功{failedReason ? `（${failedReason}）` : ""}，沒有任何扣款，也沒有加點。請再試一次或換一張卡。
         </p>
       )}
 
@@ -117,7 +162,7 @@ export default function Credits({
       {/* Tiers */}
       <h2 className="mt-10 font-display text-xl font-semibold">購買點數</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        用多少買多少，不用訂閱，點數不會過期。在台灣以新台幣付款，海外以美元付款，付款頁會依所在地自動顯示。
+        用多少買多少，不用訂閱，點數不會過期。台灣用戶以新台幣刷卡（藍新金流），海外用戶以美元付款（Stripe）。
       </p>
       <p className="mt-1 text-sm text-muted-foreground">
         購買後 7 天內未使用的點數可申請退款。購買即表示你同意
@@ -136,7 +181,9 @@ export default function Credits({
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {products.map((p) => {
             const bonus = baseline ? bonusPercent(p, baseline) : 0;
-            const busy = purchasingId === p.id;
+            const busyTwd = purchasingId === `${p.id}:twd`;
+            const busyUsd = purchasingId === `${p.id}:usd`;
+            const canTwd = p.price_twd !== null && Number.isInteger(p.price_twd);
             return (
               <div
                 key={p.id}
@@ -156,10 +203,22 @@ export default function Credits({
                   可轉錄 {p.credits.toLocaleString()} 分鐘・每分鐘{" "}
                   {formatTwd(packTwd(p) / p.credits)}
                 </p>
-                <Button className="mt-5" onClick={() => buy(p.id)} disabled={purchasingId !== null}>
-                  {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-                  {busy ? "前往付款…" : "購買"}
-                </Button>
+                <div className="mt-5 flex flex-col gap-2">
+                  {canTwd && (
+                    <Button onClick={() => buyTwd(p.id)} disabled={purchasingId !== null}>
+                      {busyTwd ? <Loader2 className="size-4 animate-spin" /> : null}
+                      {busyTwd ? "前往付款…" : `台灣付款 ${formatTwd(packTwd(p))}`}
+                    </Button>
+                  )}
+                  <Button
+                    variant={canTwd ? "outline" : "default"}
+                    onClick={() => buyUsd(p.id)}
+                    disabled={purchasingId !== null}
+                  >
+                    {busyUsd ? <Loader2 className="size-4 animate-spin" /> : null}
+                    {busyUsd ? "前往付款…" : `海外付款 ${formatUsd(p.price_usd)}`}
+                  </Button>
+                </div>
               </div>
             );
           })}

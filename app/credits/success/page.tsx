@@ -13,13 +13,14 @@ export const metadata = {
 
 /**
  * Post-checkout landing page. UX only: it NEVER grants credits — the Stripe
- * webhook is the single source of truth. It just shows whether the webhook has
- * landed yet and refreshes until it does.
+ * webhook / 藍新 NotifyURL are the source of truth. It just shows whether the
+ * credit has landed yet and refreshes until it does.
+ *   Stripe: /credits/success?session_id=…   藍新: /credits/success?order=…
  */
 export default async function CreditsSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ session_id?: string }>;
+  searchParams: Promise<{ session_id?: string; order?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -27,7 +28,8 @@ export default async function CreditsSuccessPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  const { session_id: sessionId } = await searchParams;
+  const { session_id: sessionId, order: orderNo } = await searchParams;
+  if (orderNo) return <NewebpayResult orderNo={orderNo} userId={user.id} />;
   if (!sessionId) redirect("/credits");
 
   // Look up the Checkout Session so we can show what was bought, and only for
@@ -78,6 +80,50 @@ export default async function CreditsSuccessPage({
           </p>
         )}
 
+        <div className="mt-8 flex justify-center gap-3">
+          <Button asChild variant="hero">
+            <Link href="/upload">上傳影片</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/credits">查看點數</Link>
+          </Button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+/** 藍新 order status for the signed-in user (RLS: own orders only). */
+async function NewebpayResult({ orderNo, userId }: { orderNo: string; userId: string }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: order } = await supabase
+    .from("newebpay_orders")
+    .select("status, credits, amount_twd")
+    .eq("merchant_order_no", orderNo)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!order || !user) redirect("/credits");
+  const credits = Number(order.credits) || null;
+
+  if (order.status === "failed") redirect("/credits?payment=failed");
+
+  return (
+    <main className="min-h-screen bg-background">
+      <AppHeader user={user} />
+      <section className="mx-auto max-w-xl p-5 text-center sm:p-10">
+        <CheckCircle2 className="mx-auto size-14 text-success" />
+        <h1 className="mt-4 font-display text-3xl font-semibold">付款成功</h1>
+        {order.status === "paid" ? (
+          <p className="mt-3 text-muted-foreground">
+            已付款 NT${Number(order.amount_twd).toLocaleString()}，{credits ? `${credits} 點` : "點數"}
+            已加入你的帳戶。
+          </p>
+        ) : (
+          <AwaitCredit credits={credits} />
+        )}
         <div className="mt-8 flex justify-center gap-3">
           <Button asChild variant="hero">
             <Link href="/upload">上傳影片</Link>

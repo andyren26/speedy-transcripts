@@ -54,6 +54,7 @@ export type Database = {
           description: string | null
           id: string
           job_id: string | null
+          newebpay_order_no: string | null
           stripe_payment_intent_id: string | null
           type: string
           user_id: string
@@ -64,6 +65,7 @@ export type Database = {
           description?: string | null
           id?: string
           job_id?: string | null
+          newebpay_order_no?: string | null
           stripe_payment_intent_id?: string | null
           type: string
           user_id: string
@@ -74,6 +76,7 @@ export type Database = {
           description?: string | null
           id?: string
           job_id?: string | null
+          newebpay_order_no?: string | null
           stripe_payment_intent_id?: string | null
           type?: string
           user_id?: string
@@ -128,6 +131,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      newebpay_orders: {
+        Row: {
+          amount_twd: number
+          created_at: string
+          credits: number
+          merchant_order_no: string
+          message: string | null
+          paid_at: string | null
+          payment_type: string | null
+          product_id: string
+          status: string
+          trade_no: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_twd: number
+          created_at?: string
+          credits: number
+          merchant_order_no: string
+          message?: string | null
+          paid_at?: string | null
+          payment_type?: string | null
+          product_id: string
+          status?: string
+          trade_no?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_twd?: number
+          created_at?: string
+          credits?: number
+          merchant_order_no?: string
+          message?: string | null
+          paid_at?: string | null
+          payment_type?: string | null
+          product_id?: string
+          status?: string
+          trade_no?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       jobs: {
         Row: {
@@ -241,7 +289,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      grant_newebpay_order: {
+        Args: {
+          p_amount: number
+          p_order_no: string
+          p_payment_type: string
+          p_trade_no: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

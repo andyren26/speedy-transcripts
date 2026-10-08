@@ -11,7 +11,7 @@ export const metadata = {
 export default async function CreditsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ canceled?: string }>;
+  searchParams: Promise<{ canceled?: string; payment?: string; reason?: string }>;
 }) {
   const supabase = await createClient();
   const {
@@ -19,7 +19,7 @@ export default async function CreditsPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  const { canceled } = await searchParams;
+  const { canceled, payment, reason } = await searchParams;
 
   // RLS limits every query to the signed-in user's own rows (or active products).
   const [{ data: profile }, { data: products }, { data: transactions }] = await Promise.all([
@@ -55,6 +55,7 @@ export default async function CreditsPage({
           }))}
           transactions={transactions ?? []}
           canceled={canceled === "1"}
+          failedReason={payment === "failed" ? (reason ?? "").slice(0, 80) : null}
         />
       </section>
     </main>
