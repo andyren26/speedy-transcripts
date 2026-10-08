@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/AppHeader";
 import Credits from "@/views/Credits";
+import { stripeCheckoutEnabled } from "@/lib/stripe";
 
 export const metadata = {
   title: "點數 — Video Speed Reader",
@@ -56,6 +57,7 @@ export default async function CreditsPage({
           transactions={transactions ?? []}
           canceled={canceled === "1"}
           failedReason={payment === "failed" ? (reason ?? "").slice(0, 80) : null}
+          overseasEnabled={stripeCheckoutEnabled()}
         />
       </section>
     </main>

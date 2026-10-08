@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, stripeCheckoutEnabled } from "@/lib/stripe";
 
 /**
  * POST /api/credits/checkout  { product_id }
@@ -8,6 +8,11 @@ import { getStripe } from "@/lib/stripe";
  * Credits are NOT granted here — only the Stripe webhook grants credits.
  */
 export async function POST(req: Request) {
+  // 0. US$ checkout is switched off until Stripe goes live (button hidden too).
+  if (!stripeCheckoutEnabled()) {
+    return NextResponse.json({ error: "海外付款暫不開放" }, { status: 403 });
+  }
+
   // 1. Require a signed-in user.
   const supabase = await createClient();
   const {

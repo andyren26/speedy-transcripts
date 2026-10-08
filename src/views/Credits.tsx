@@ -54,6 +54,7 @@ export default function Credits({
   transactions,
   canceled,
   failedReason,
+  overseasEnabled,
 }: {
   balance: number;
   products: CreditProduct[];
@@ -61,6 +62,9 @@ export default function Credits({
   canceled: boolean;
   /** set when 藍新 returned an unsuccessful payment */
   failedReason: string | null;
+  /** US$ Stripe checkout for overseas customers — off until Stripe goes live
+   *  (STRIPE_CHECKOUT_ENABLED=true on Vercel turns it back on). */
+  overseasEnabled: boolean;
 }) {
   // "<productId>:twd" (藍新) or "<productId>:usd" (Stripe) while redirecting
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
@@ -162,7 +166,10 @@ export default function Credits({
       {/* Tiers */}
       <h2 className="mt-10 font-display text-xl font-semibold">購買點數</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        用多少買多少，不用訂閱，點數不會過期。台灣用戶以新台幣刷卡（藍新金流），海外用戶以美元付款（Stripe）。
+        用多少買多少，不用訂閱，點數不會過期。
+        {overseasEnabled
+          ? "台灣用戶以新台幣刷卡（藍新金流），海外用戶以美元付款（Stripe）。"
+          : "以新台幣信用卡付款（藍新金流）。"}
       </p>
       <p className="mt-1 text-sm text-muted-foreground">
         購買後 7 天內未使用的點數可申請退款。購買即表示你同意
@@ -198,7 +205,9 @@ export default function Credits({
                   )}
                 </div>
                 <p className="mt-3 font-display text-3xl font-semibold">{formatTwd(packTwd(p))}</p>
-                <p className="text-sm text-muted-foreground">海外付款 {formatUsd(p.price_usd)}</p>
+                {overseasEnabled && (
+                  <p className="text-sm text-muted-foreground">海外付款 {formatUsd(p.price_usd)}</p>
+                )}
                 <p className="mt-2 text-sm text-muted-foreground">
                   可轉錄 {p.credits.toLocaleString()} 分鐘・每分鐘{" "}
                   {formatTwd(packTwd(p) / p.credits)}
@@ -210,14 +219,19 @@ export default function Credits({
                       {busyTwd ? "前往付款…" : `台灣付款 ${formatTwd(packTwd(p))}`}
                     </Button>
                   )}
-                  <Button
-                    variant={canTwd ? "outline" : "default"}
-                    onClick={() => buyUsd(p.id)}
-                    disabled={purchasingId !== null}
-                  >
-                    {busyUsd ? <Loader2 className="size-4 animate-spin" /> : null}
-                    {busyUsd ? "前往付款…" : `海外付款 ${formatUsd(p.price_usd)}`}
-                  </Button>
+                  {overseasEnabled && (
+                    <Button
+                      variant={canTwd ? "outline" : "default"}
+                      onClick={() => buyUsd(p.id)}
+                      disabled={purchasingId !== null}
+                    >
+                      {busyUsd ? <Loader2 className="size-4 animate-spin" /> : null}
+                      {busyUsd ? "前往付款…" : `海外付款 ${formatUsd(p.price_usd)}`}
+                    </Button>
+                  )}
+                  {!canTwd && !overseasEnabled && (
+                    <Button disabled>暫不開放購買</Button>
+                  )}
                 </div>
               </div>
             );

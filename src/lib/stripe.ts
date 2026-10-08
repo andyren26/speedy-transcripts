@@ -23,3 +23,12 @@ export function getStripe(): Stripe {
   });
   return client;
 }
+
+/**
+ * US$ checkout (overseas customers) is off by default while Stripe is still in
+ * sandbox. Set STRIPE_CHECKOUT_ENABLED=true on Vercel to show the 海外付款 button
+ * and accept /api/credits/checkout again — no code change needed.
+ */
+export function stripeCheckoutEnabled() {
+  return process.env["STRIPE_CHECKOUT_ENABLED"] === "true";
+}
