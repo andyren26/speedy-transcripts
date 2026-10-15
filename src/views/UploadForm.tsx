@@ -7,6 +7,7 @@ import { FileVideo, Link2, Loader2, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MAX_UPLOAD_BYTES, formatBytes, isMediaFile } from "@/lib/upload-limits";
+import { checkVideoUrl } from "@/lib/url-policy";
 
 const LANGUAGES = [
   { value: "zh", label: "中文 (zh)" },
@@ -156,6 +157,14 @@ export default function UploadForm() {
     setError("");
     setNeedCredits(false);
     try {
+      if (mode === "url") {
+        // Same rule as the server (instant feedback; the server still enforces it).
+        const check = checkVideoUrl(url);
+        if (!check.ok) {
+          fail(check.message);
+          return;
+        }
+      }
       const ok =
         mode === "file" ? await submitFile() : await createJob({ video_source_url: url.trim() });
       if (!ok) return;

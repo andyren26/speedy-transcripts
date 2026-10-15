@@ -25,6 +25,8 @@ import openai
 from openai import OpenAI
 from supabase import create_client
 
+from url_policy import UrlBlocked, resolve_safe_url
+
 
 def _get_secret(client, name: str) -> str:
     """Fetch one Secrets Manager secret by name (returns the SecretString)."""
@@ -123,6 +125,10 @@ class Progress:
             t.join(timeout=1)
 
 
+# Never let yt-dlp use its YouTube extractors, even for a link that is not on a YouTube
+# domain (the generic extractor would otherwise pick up an embedded YouTube player).
+YTDLP_EXTRACTORS = ["--use-extractors", "default,-youtube.*"]
+
 _DL_PCT = re.compile(r"\[download\]\s+([\d.]+)%")
 
 
@@ -134,7 +140,7 @@ def download_video(url: str, dest_dir: Path, on_percent=None) -> Path:
         return existing[0]  # re-run of the same job: reuse the earlier download
     out_template = str(dest_dir / "video.%(ext)s")
     proc = subprocess.Popen(
-        ["yt-dlp", "--no-playlist", "--newline", "-o", out_template, url],
+        ["yt-dlp", *YTDLP_EXTRACTORS, "--no-playlist", "--newline", "-o", out_template, url],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
     )
     assert proc.stdout is not None
@@ -173,7 +179,7 @@ def probe_duration_minutes_cheap(video_url: str) -> Optional[int]:
     for e.g. direct CloudFront .mp4 links). None means "check after download"."""
     try:
         out = subprocess.run(
-            ["yt-dlp", "--no-playlist", "--no-warnings", "--print", "duration", video_url],
+            ["yt-dlp", *YTDLP_EXTRACTORS, "--no-playlist", "--no-warnings", "--print", "duration", video_url],
             check=True, capture_output=True, text=True, timeout=30,
         ).stdout.strip()
     except (subprocess.SubprocessError, OSError):
@@ -200,25 +206,29 @@ def block_insufficient(job: dict, minutes: int, balance: float) -> None:
         "user_id": job["user_id"],
         "amount": 0,
         "type": "deduction",
-        "description": f"Insufficient credits: video is {minutes} min, you have {int(balance)}",
+        "description": (
+            f"Insufficient credits: video is {minutes} min, you have {int(balance)}"
+            " (credits held by your other in-progress videos are not available)"
+        ),
         "job_id": job["id"],
     }).execute()
     print(f"[{job['id']}] insufficient credits: {minutes} min > {balance} cr", flush=True)
 
 
+def claim_credits(job: dict, minutes: int) -> bool:
+    """Reserve `minutes` of the user's credits for this job. Atomic in the database:
+    available = balance - minutes reserved by the user's OTHER in-progress jobs, so
+    parallel jobs can never spend the same credits. False = not enough available."""
+    result = db.rpc("claim_job_credits", {"p_job_id": job["id"], "p_minutes": minutes}).execute().data
+    return result == "ok"
+
+
 def deduct_credits(job: dict, minutes: int) -> None:
-    """Ledger row first (source of truth), then the derived balance.
-    Read-then-write is fine for v1: the distributor runs one worker per job and
-    users don't run concurrent jobs at scale yet."""
-    db.table("credit_transactions").insert({
-        "user_id": job["user_id"],
-        "amount": -minutes,
-        "type": "deduction",
-        "description": f"Transcribed {minutes} min video",
-        "job_id": job["id"],
-    }).execute()
-    new_balance = max(0.0, get_balance(job["user_id"]) - minutes)
-    db.table("profiles").update({"credits_balance": new_balance}).eq("id", job["user_id"]).execute()
+    """Charge the reserved minutes: ledger row + balance update in one DB transaction
+    (idempotent: a job is charged at most once)."""
+    result = db.rpc("charge_job_credits", {"p_job_id": job["id"], "p_minutes": minutes}).execute().data
+    if result not in ("charged", "already_charged"):
+        raise RuntimeError(f"charge_job_credits returned {result!r}")
 
 
 def get_duration_seconds(audio_path: Path) -> float:
@@ -301,6 +311,11 @@ FAIL_MESSAGES = {
     "transcribe": "語音辨識服務暫時失敗，請稍後重新送出。這次不會扣點。",
     "save": "轉錄完成但儲存失敗，請重新送出。這次不會扣點。",
 }
+BLOCKED_MESSAGES = {
+    "youtube": "目前不支援 YouTube 網址，請改用上傳檔案或其他公開的直接下載連結。這次不會扣點。",
+    "private": "這個網址無法使用（不支援內部網路位址或 IP 位址）。請改用上傳檔案或公開的直接下載連結。這次不會扣點。",
+    "invalid": "這個網址格式無法使用，請改用上傳檔案或公開的直接下載連結。這次不會扣點。",
+}
 UNFINISHED = ["pending", "downloading", "transcribe"]
 
 
@@ -340,20 +355,30 @@ def run(job_id: str, stage: dict) -> None:
     # Progress map: download 5–35%, audio conversion 35–40%, Whisper 40–95%,
     # saving + charging 95–100%.
 
+    # Link policy (defence in depth: POST /api/jobs rejects these too): no YouTube, no
+    # internal/IP addresses. Redirects are followed by hand so every hop is checked.
+    stage["name"] = "validate"
+    try:
+        source_url = resolve_safe_url(job["video_source_url"])
+    except UrlBlocked as blocked:
+        print(f"[{job_id}] link blocked ({blocked.code}): {blocked.detail}", flush=True)
+        mark_failed(job_id, BLOCKED_MESSAGES.get(blocked.code, BLOCKED_MESSAGES["invalid"]))
+        return
+
     # M2 gate 1 (cheap): duration from the manifest, no download.
     balance = get_balance(job["user_id"])
-    quick_minutes = probe_duration_minutes_cheap(job["video_source_url"])
+    quick_minutes = probe_duration_minutes_cheap(source_url)
     if quick_minutes is not None and quick_minutes > balance:
         block_insufficient(job, quick_minutes, balance)
         return
 
     stage["name"] = "download"
-    print(f"[{job_id}] downloading {job['video_source_url']}", flush=True)
+    print(f"[{job_id}] downloading {source_url}", flush=True)
     work = WORK_ROOT / job_id
     work.mkdir(parents=True, exist_ok=True)
     progress.set(5, force=True)
     video = download_video(
-        job["video_source_url"], work, on_percent=lambda p: progress.set(5 + p * 0.30)
+        source_url, work, on_percent=lambda p: progress.set(5 + p * 0.30)
     )
     progress.set(35, force=True)
     stage["name"] = "audio"
@@ -364,7 +389,9 @@ def run(job_id: str, stage: dict) -> None:
     # number we charge. 61 s = 2 credits (always round up, minimum 1).
     minutes = max(1, math.ceil(get_duration_seconds(mp3) / 60))
     balance = get_balance(job["user_id"])
-    if minutes > balance:
+    # Atomic check + reservation: other in-progress jobs of this user hold credits too,
+    # so this succeeds only if the minutes are really still available.
+    if not claim_credits(job, minutes):
         block_insufficient(job, minutes, balance)
         return
 

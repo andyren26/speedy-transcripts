@@ -26,6 +26,9 @@ TASK_DEFINITION = os.environ["TASK_DEFINITION"]
 SUBNETS = [s for s in os.environ["SUBNETS"].split(",") if s]
 CONTAINER_NAME = os.environ.get("CONTAINER_NAME", "worker")
 CLAIMING = "claiming"  # placeholder ARN while RunTask is in flight
+# Cost guard: never run more than this many transcription tasks at once. Extra pending
+# jobs simply wait (oldest first) and are picked up by a later one-minute tick.
+MAX_CONCURRENT_TASKS = int(os.environ.get("MAX_CONCURRENT_TASKS", "10"))
 
 SECRET_NAMES = {
     "OPENAI_API_KEY": os.environ.get("OPENAI_SECRET_NAME", "openai-api-key"),
@@ -88,16 +91,36 @@ def _run_task(job_id: str, secrets: dict) -> str:
     return resp["tasks"][0]["taskArn"]
 
 
+def _running_tasks(db) -> int:
+    """Unfinished jobs that already have a Fargate task (launched or being launched)."""
+    jobs = (
+        db.table("jobs").select("id, current_session_id")
+        .in_("status", ["pending", "downloading", "transcribe"]).execute().data
+    )
+    session_ids = [j["current_session_id"] for j in jobs if j.get("current_session_id")]
+    if not session_ids:
+        return 0
+    rows = (
+        db.table("job_sessions").select("id, fargate_task_arn")
+        .in_("id", session_ids).execute().data
+    )
+    return sum(1 for r in rows if r.get("fargate_task_arn"))
+
+
 def handler(event, context):
     secrets = _load_secrets()
     db = create_client(secrets["SUPABASE_URL"], secrets["SUPABASE_SECRET_KEY"])
 
     pending = (
-        db.table("jobs").select("id, current_session_id").eq("status", "pending").execute().data
+        db.table("jobs").select("id, current_session_id").eq("status", "pending")
+        .order("created_at").execute().data
     )
     spawned, skipped, errors = [], [], []
+    capacity = MAX_CONCURRENT_TASKS - _running_tasks(db) if pending else 0
 
     for job in pending:
+        if len(spawned) >= capacity:
+            break  # at the concurrency cap; the rest stay 'pending' for the next tick
         try:
             session_id = _ensure_session(db, job)
             # Atomic claim: only one invocation can flip NULL -> CLAIMING, so even
@@ -132,8 +155,8 @@ def handler(event, context):
         swept = {"error": str(e)[:300]}
         print(f"sweep error: {e}", flush=True)
 
-    summary = {"pending": len(pending), "spawned": spawned, "skipped": skipped,
-               "errors": errors, "swept": swept}
+    summary = {"pending": len(pending), "capacity": capacity, "spawned": spawned,
+               "skipped": skipped, "errors": errors, "swept": swept}
     print(summary, flush=True)
     return summary
 

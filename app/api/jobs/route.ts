@@ -3,6 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createDownloadUrl, uploadedSize, userUploadPrefix } from "@/lib/s3";
 import { MAX_UPLOAD_BYTES } from "@/lib/upload-limits";
+import { checkVideoUrl } from "@/lib/url-policy";
+import { resolvesToPublicAddress } from "@/lib/url-policy.server";
+import { activeJobLimitError } from "@/lib/job-limits";
 
 const LANGUAGES = new Set(["zh", "en", "ja"]);
 
@@ -38,12 +41,19 @@ export async function POST(req: Request) {
     if (!url) {
       return NextResponse.json({ error: "video_source_url required" }, { status: 400 });
     }
-    if (!/^https?:\/\//i.test(url)) {
+    // Link policy: no YouTube, no IP / internal addresses (the worker re-checks all of
+    // this, including redirects).
+    const check = checkVideoUrl(url);
+    if (!check.ok) {
+      return NextResponse.json({ error: check.message, code: check.code }, { status: 400 });
+    }
+    if (!(await resolvesToPublicAddress(check.url.hostname))) {
       return NextResponse.json(
-        { error: "video_source_url must start with http(s)://" },
+        { error: "這個網址無法使用（不支援內部網路位址），請改用上傳檔案或公開的直接下載連結。", code: "private" },
         { status: 400 },
       );
     }
+    url = check.url.toString();
   }
   const language = LANGUAGES.has(body.language) ? body.language : "zh";
   const topic = typeof body.topic === "string" && body.topic.trim() ? body.topic.trim() : null;
@@ -66,6 +76,12 @@ export async function POST(req: Request) {
   // The user has already been authenticated above; the Secret key bypasses RLS
   // so we can insert in one round-trip without policy ping-pong.
   const admin = createAdminClient();
+
+  // Per-user cap on videos in progress at once.
+  const limitError = await activeJobLimitError(admin, user.id);
+  if (limitError) {
+    return NextResponse.json({ error: limitError, code: "too_many_active_jobs" }, { status: 429 });
+  }
 
   const { data: job, error: jobErr } = await admin
     .from("jobs")

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createUploadUrl } from "@/lib/s3";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { activeJobLimitError } from "@/lib/job-limits";
 import { MAX_UPLOAD_BYTES, formatBytes, isMediaFile } from "@/lib/upload-limits";
 
 /**
@@ -42,6 +44,12 @@ export async function POST(req: Request) {
       },
       { status: 413 },
     );
+  }
+
+  // Too many videos already in progress: say so before the user waits on a big upload.
+  const limitError = await activeJobLimitError(createAdminClient(), user.id);
+  if (limitError) {
+    return NextResponse.json({ error: limitError, code: "too_many_active_jobs" }, { status: 429 });
   }
 
   // Credits: block before the upload so nobody waits on a big file that can't be transcribed.
